@@ -1,19 +1,6 @@
 import sys
-from bs4 import BeautifulSoup, element
+from bs4 import BeautifulSoup
 import urllib
-
-# might come in handy later
-def visible(myElement):
-    '''
-    check each element from a page and check if it's visible text
-    '''
-    if myElement.parent.name in ['style', 'script', '[document]', 'head',
-                               'title']:
-        return False
-    elif isinstance(element, element.Comment):
-        return False
-    else:
-        return True
     
 
 def main(fileName):
@@ -25,9 +12,10 @@ def main(fileName):
     for link in links:
         html = urllib.urlopen(link).read()
         soup = BeautifulSoup(html)
-        # find all paragraph tags in html and print to file
-        print >> outFile, soup("p")
-
+        # find all paragraph tags in html 
+        paragraphs = soup('p')
+        paragraphs = [p.extract() for p in paragraphs]
+        print paragraphs
 
 if __name__ == "__main__":
     fileName = sys.argv[1]
