@@ -14,8 +14,8 @@ def main(fileName):
         soup = BeautifulSoup(html)
         # find all paragraph tags in html 
         paragraphs = soup('p')
-        paragraphs = [p.extract() for p in paragraphs]
-        print paragraphs
+        for p in paragraphs:
+            print >> outFile, p.extract()
 
 if __name__ == "__main__":
     fileName = sys.argv[1]
