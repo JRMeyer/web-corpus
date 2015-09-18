@@ -15,7 +15,7 @@ class Crawler(object):
         
     def strip_links_from_page(self):
         while self.queuedLinks:
-            time.sleep(.5) 
+            time.sleep(.001) 
             # take link off top of stack
             self.currentLink = self.queuedLinks[0]
             print self.currentLink
@@ -44,9 +44,13 @@ class Crawler(object):
                     if myLink.startswith('//'):
                         pass
                     
+                    # BBC-spedific
+                    elif myLink.startswith('/kyrgyz/'):
+                        myLink = 'http://www.bbc.com'+ myLink
+
                     # internal links may not have beginning part, so paste it on
                     elif myLink.startswith('/'):
-                        myLink = seed + link['href']
+                        myLink = seed + myLink
                         
                     # check if we've seen the link already
                     if (myLink in self.attemptedLinks or

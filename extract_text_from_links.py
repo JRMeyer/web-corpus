@@ -2,9 +2,8 @@ import sys
 from bs4 import BeautifulSoup
 import urllib
     
-
 def main(fileName):
-    outFile = open('outPut.txt', 'w')
+    outFile = open('outPutText.txt', 'w')
 
     with open(fileName) as f:
         links = f.readlines()
