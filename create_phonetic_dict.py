@@ -8,21 +8,29 @@ def save_pronunciation_dict(tokens, lookupTable):
         phonemes=token
 
         # palatal/uvular plosives followed by front/back vowels
-        phonemes = re.sub(r'к([аоуы])', r'q \1', phonemes)
-        phonemes = re.sub(r'к([иеэөү])', r'k \1', phonemes)
-        
-        phonemes = re.sub(r'г([аоуы])', r'gh \1', phonemes)
-        phonemes = re.sub(r'г([иеэөү])', r'g \1', phonemes)
+        phonemes = re.sub(r'к([аоуы])', r'Q \1', phonemes)
+        phonemes = re.sub(r'к([иеэөү])', r'K \1', phonemes)
+        phonemes = re.sub(r'г([аоуы])', r'GH \1', phonemes)
+        phonemes = re.sub(r'г([иеэөү])', r'G \1', phonemes)
 
         # syllable final palatal/velar plosives preceded by front/back vowels
-        phonemes = re.sub(r'([аоуы])к([^аоуыиеэөү])', r'\1q \2', phonemes)
-        phonemes = re.sub(r'([иеэөү])к([^аоуыиеэөү])', r'\1k \2', phonemes)
+        phonemes = re.sub(r'([аоуы])к([^аоуыиеэөү])', r'\1Q \2', phonemes)
+        phonemes = re.sub(r'([иеэөү])к([^аоуыиеэөү])', r'\1K \2', phonemes)
+        phonemes = re.sub(r'([аоуы])г([^аоуыиеэөү])', r'\1GH \2', phonemes)
+        phonemes = re.sub(r'([иеэөү])г([^аоуыиеэөү])', r'\1G \2', phonemes)
 
-        phonemes = re.sub(r'([аоуы])г([^аоуыиеэөү])', r'\1gh \2', phonemes)
-        phonemes = re.sub(r'([иеэөү])г([^аоуыиеэөү])', r'\1g \2', phonemes)
+        # word final palatal/velar plosives preceded by front/back vowels
+        phonemes = re.sub(r'([аоуы])к($)', r'\1Q', phonemes)
+        phonemes = re.sub(r'([иеэөү])к($)', r'\1K', phonemes)
+        phonemes = re.sub(r'([аоуы])г($)', r'\1GH', phonemes)
+        phonemes = re.sub(r'([иеэөү])г($)', r'\1G', phonemes)
 
         # /b/ between back vowels goes to [w] 
-        phonemes = re.sub(r'([аоуы])б([аоуы])', r'\1w \2', phonemes)
+        phonemes = re.sub(r'([аоуы])б([аоуы])', r'\1W \2', phonemes)
+
+        # diphthongs
+        phonemes = re.sub(r'ой', r'OY ', phonemes)
+        phonemes = re.sub(r'ай', r'AY ', phonemes)
 
         for character in phonemes:
             if character in lookupTable:
@@ -34,44 +42,45 @@ def save_pronunciation_dict(tokens, lookupTable):
         print((token + '\t' + phonemes), end="\n", file=outFile)
 
 
-lookupTable = {'а':'a ',
-          'о':'o ',
-          'у':'u ',
-          'ы':'ih ',
-          
-          'и':'i ',
-          'е':'e ',
-          'э':'eh ',
-          'ө':'oe ',
-          'ү':'y ',
-          
-          'ю':'j u ',
-          'я':'j a ',
-          'ё':'j o ',
-          
-          'п':'p ',
-          'б':'b ',
-          
-          'д':'d ',
-          'т':'t ',
-          
-          'ш':'sh ',
-          'щ':'sh ',
-          'ж':'zh ',
-          
-          'й':'j ',
-          'л':'l ',
-          'м':'m ',
-          'н':'n ',
-          'ң':'ng ',
-          
-          'з':'z ',
-          'с':'s ',
-          'ц':'ts ',
-          'ч':'tsh ',
-          'ф':'f ',
-          'х':'h ',
-          'р':'r '}
+# based on Arpabet https://en.wikipedia.org/wiki/Arpabet
+lookupTable = {'а':'AA ',
+               'о':'OW ',
+               'у':'UW ',
+               'ы':'IH ',
+            
+               'и':'IY ',
+               'е':'EH ',
+               'э':'EH ',
+               'ө':'OE ',
+               'ү':'YY ',
+               
+               'ю':'Y UH ',
+               'я':'Y AA ',
+               'ё':'Y OW ',
+               
+               'п':'P ',
+               'б':'B ',
+               
+               'д':'D ',
+               'т':'T ',
+               
+               'ш':'SH ',
+               'щ':'SH ',
+               'ж':'JH ',
+            
+               'й':'Y ',
+               'л':'L ',
+               'м':'M ',
+               'н':'N ',
+               'ң':'NG ',
+               
+               'з':'Z ',
+               'с':'S ',
+               'ц':'TS ',
+               'ч':'CH ',
+               'ф':'F ',
+               'х':'HH ',
+               'р':'R '}
         
         
 if __name__ == "__main__":
