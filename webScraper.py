@@ -37,20 +37,17 @@ class Crawler(object):
             try:
                 # iterate through all links on page
                 for link in soup.find_all('a'):
+                    print link['href']
                     # just get the url
                     myLink = link['href']
                     
-                    # these are external links
-                    if myLink.startswith('//'):
-                        pass
-                    
-                    # BBC-spedific
-                    elif myLink.startswith('/kyrgyz/'):
-                        myLink = 'http://www.bbc.com'+ myLink
+                    # # these are external links
+                    # if myLink.startswith('//'):
+                    #     pass
 
-                    # internal links may not have beginning part, so paste it on
-                    elif myLink.startswith('/'):
-                        myLink = seed + myLink
+                    # # internal links may not have beginning part, so paste it on
+                    # if myLink.startswith('/'):
+                    #     myLink = seed + myLink
                         
                     # check if we've seen the link already
                     if (myLink in self.attemptedLinks or
