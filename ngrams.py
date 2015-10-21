@@ -96,11 +96,11 @@ def print_to_file(unigramProbs,bigramProbs):
     
     print('\n1-grams:', end='\n', file=outFile)
     for unigram,logProb in unigramProbs.items():
-        print((unigram +' '+ str(logProb)), end='\n', file=outFile)
+        print((str(logProb) +' '+ unigram), end='\n', file=outFile)
 
     print('\n2-grams:', end='\n', file=outFile)
     for bigram,logProb in bigramProbs.items():
-        print((bigram[0] +' '+ bigram[1] +' '+ str(logProb)), end='\n', file=outFile)
+        print((str(logProb) +' '+ bigram[0] +' '+ bigram[1]), end='\n', file=outFile)
 
         
 if __name__ == "__main__":
