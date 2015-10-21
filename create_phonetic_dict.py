@@ -2,7 +2,7 @@ from tokenize_corpus import tokenize_file
 import re
 
 def save_pronunciation_dict(tokens, lookupTable):
-    outFile = open('output.txt', mode='wt', encoding='utf-8') 
+    outFile = open('kyrgyz.dict', mode='wt', encoding='utf-8') 
 
     for token in sorted(set(tokens)):
         phonemes=token
@@ -39,7 +39,7 @@ def save_pronunciation_dict(tokens, lookupTable):
         # in case we added a space to the end of the sequence
         phonemes=phonemes.strip()
         
-        print((token + '\t' + phonemes), end="\n", file=outFile)
+        print((token + ' ' + phonemes), end="\n", file=outFile)
 
 
 # based on Arpabet https://en.wikipedia.org/wiki/Arpabet
