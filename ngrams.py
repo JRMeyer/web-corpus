@@ -2,9 +2,9 @@
 Joshua Meyer
 
 Given a corpus (text file), output a model of n-grams in ARPA format
-USAGE: $ python3 ngrams.py
+USAGE: $ python3 q1.py
 '''
-from tokenize_corpus import tokenize_file
+from tokenize_corpus import *
 import operator
 from collections import Counter
 import numpy as np
@@ -15,6 +15,7 @@ import re
 
 def get_user_input():
     fileName = input("Enter filepath here: ")
+    fTest = input("Enter test filepath here: ")
     smoothing = input("Pick your flavor of smoothing...\n"+
                       "Enter 'laplace' or 'lidstone' or 'none' here: ")
     if smoothing == 'lidstone':
@@ -22,21 +23,28 @@ def get_user_input():
                       "Enter a decimal here: "))
     else:
         _lambda = None
-    return fileName, smoothing, _lambda
+    return fileName, fTest, smoothing, _lambda
 
 
 def get_ngrams(tokens, n):
     ngrams=[]
-    # take unigrams and concatenate them into ngrams
-    for i in range(len(tokens)-(n-1)):
-        ngrams.append(tuple(tokens[i:i+n]))
+    # special case for unigrams
+    if n==1:
+        for token in tokens:
+            # we need parentheses and a comma to make a tuple
+            ngrams.append((token,))
+    # general n-gram case
+    else:
+        for i in range(len(tokens)-(n-1)):
+            ngrams.append(tuple(tokens[i:i+n]))
     return ngrams
-            
 
-def apply_smoothing(ngrams, ngramOrder, smoothing, _lambda):
+
+def get_prob_dict(ngrams, ngramOrder, smoothing, _lambda):
     '''
-    make a dictionary of probabilities, where the key is the ngram and the
-    value is the frequency of that word over the number of tokens in corpus
+    Make a dictionary of probabilities, where the key is the ngram.
+
+    Without smoothing, we have: p(X) = freq(X)/NUMBER_OF_NGRAMS
     '''
     if smoothing == 'none':
         numSmooth = 0
@@ -60,86 +68,77 @@ def apply_smoothing(ngrams, ngramOrder, smoothing, _lambda):
     return probDict, probUnSeen
 
 
-def get_unigram_model(uniProbDict):
-    ''' 
-    p(A) = log(count(A)/length(CORPUS))
+def get_ngram_model(probDict):
     '''
-    unigramProbs={}
-    for key,value in uniProbDict.items():
-        unigramProbs[key] = np.log(value)
-    return unigramProbs
+    Given a dictionary of nGrams for some corpus, compute the conditional
+    probabilities for higher order nGrams. There must be all nGrams already in
+    the dict leading up to the highest order. IE, if the dict has trigrams, it
+    *must* also have bigrams and unigrams. 
 
+    p(N|N_MINUS_ONE) = log(p(N)/p(N_MINUS_ONE))
 
-def get_bigram_model(uniProbDict,biProbDict):
-    '''
+    p(A) = log(p(A))
     p(B|A) =  log(p(A_B)/p(A))
-    '''
-    loggedProbs={}
-    for A_B, pA_B in biProbDict.items():
-        pA = uniProbDict[A_B[0]]
-        pBgivenA = pA_B/pA
-        loggedProbs[A_B] = np.log(pBgivenA)
-    return loggedProbs
-
-
-def get_trigram_model(biProbDict,triProbDict):
-    '''
     p(C|A_B) =  log(p(A_B_C)/p(A_B))
     '''
     loggedProbs={}
-    for A_B_C, pA_B_C in triProbDict.items():
-        pA_B = biProbDict[A_B_C[0:2]]
-        pCgivenA_B = pA_B_C/pA_B
-        loggedProbs[A_B_C] = np.log(pCgivenA_B)
+    for nGram, nGramProb in probDict.items():
+        if len(nGram) == 1:
+            loggedProbs[nGram] = np.log(nGramProb)
+        else:
+            nMinus1Gram = nGram[:(len(nGram)-1)]
+            nMinus1GramProb = probDict[nMinus1Gram]
+            condNgramProb = nGramProb/nMinus1GramProb
+            loggedProbs[nGram] = np.log(condNgramProb)
     return loggedProbs
 
 
-def print_to_file(unigramModel,bigramModel,trigramModel):
-    outFile = open('kyrgyz.lm', mode='wt', encoding='utf-8')
-    nUnigrams = len(unigramModel)
-    nBigrams = len(bigramModel)
-    nTrigrams = len(trigramModel)
-    
-    print('\data\\', end='\n', file=outFile)
-    print(('ngram 1=' + str(nUnigrams)), end='\n', file=outFile)
-    print(('ngram 2=' + str(nBigrams)), end='\n', file=outFile)
-    print(('ngram 3=' + str(nTrigrams)), end='\n', file=outFile)
-    
-    print('\n1-grams:', end='\n', file=outFile)
-    sortedDict = sorted(unigramModel.items(), key=operator.itemgetter(1),
-                        reverse=True)
-    for unigram,logProb in sortedDict:
-        print((str(logProb) +' '+ unigram),
-              end='\n', file=outFile)
 
-    print('\n2-grams:', end='\n', file=outFile)
-    sortedDict = sorted(bigramModel.items(), key=operator.itemgetter(1),
-                        reverse=True)
-    for bigram,logProb in sortedDict:
-        print((str(logProb) +' '+ bigram[0] +' '+ bigram[1]),
-              end='\n',file=outFile)
-
-    print('\n3-grams:', end='\n', file=outFile)
-    sortedDict = sorted(trigramModel.items(), key=operator.itemgetter(1),
-                        reverse=True)
-    for trigram,logProb in sortedDict:
-        print((str(logProb) +' '+ trigram[0] +' '+ trigram[1] +' '+ trigram[2]),
-              end='\n', file=outFile)
+def print_joint_prob(fileName, probDict, probUnSeen):
+    '''
+    make predictions on test corpus, given probabilities from training corpus
+    '''
+    f = open(fileName)
+    for line in f:
+        probs=[]
+        tokens = tokenize_line(line,2,tags=False)
+        for bigram in get_ngrams(tokens,2):
+            try:
+                probs.append(probDict[bigram])
+            except:
+                probs.append(np.log(probUnSeen))
+        print(np.prod(probs))
 
         
 if __name__ == "__main__":
-    fileName,smoothing,_lambda = get_user_input()
+    fileName,fTest,smoothing,_lambda = get_user_input()
 
-    unigrams = tokenize_file(fileName)
-    bigrams = get_ngrams(unigrams, 2)
-    trigrams = get_ngrams(unigrams, 3)
+    unigrams=[]
+    bigrams=[]
+    f = open(fileName)
+    numSentences=0
+    for line in f:
+        tokens = tokenize_line(line,1,tags=True)
+        for unigram in get_ngrams(tokens,1):
+            unigrams.append(unigram)
+
+        tokens = tokenize_line(line,2,tags=True)
+        for bigram in get_ngrams(tokens,2):
+            bigrams.append(bigram)
+        numSentences+=1
+
+    # we need these to calulate our conditional probabilities later on
+    unigrams = unigrams + [('#',)]*numSentences 
+        
+    uniProbDict, uniProbUnSeen = get_prob_dict(unigrams,1,smoothing,_lambda)
+    biProbDict, biProbUnSeen = get_prob_dict(bigrams,2,smoothing,_lambda)
+
+    nGramProbDict = {}
+    for d in [uniProbDict,biProbDict]:
+        for key,value in d.items():
+            nGramProbDict[key] = value
+
+    condProbDict = get_ngram_model(nGramProbDict)
+
+    print_joint_prob(fTest,condProbDict,biProbUnSeen)
     
-    uniProbDict, uniProbUnSeen = apply_smoothing(unigrams,1,smoothing,_lambda)
-    biProbDict, biProbUnSeen = apply_smoothing(bigrams,2,smoothing,_lambda)
-    triProbDict, triProbUnSeen = apply_smoothing(trigrams,3,smoothing,_lambda)
-
-    unigramModel = get_unigram_model(uniProbDict)
-    bigramModel = get_bigram_model(uniProbDict,biProbDict)
-    trigramModel = get_trigram_model(biProbDict,triProbDict)
-
-    print_to_file(unigramModel,bigramModel,trigramModel)

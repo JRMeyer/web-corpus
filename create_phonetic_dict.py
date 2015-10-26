@@ -8,21 +8,21 @@ def save_pronunciation_dict(tokens, lookupTable):
         phonemes=token
 
         # palatal/uvular plosives followed by front/back vowels
-        phonemes = re.sub(r'к([аоуы])', r'Q \1', phonemes)
+        phonemes = re.sub(r'к([аоуы])', r'K \1', phonemes)
         phonemes = re.sub(r'к([иеэөү])', r'K \1', phonemes)
-        phonemes = re.sub(r'г([аоуы])', r'GH \1', phonemes)
+        phonemes = re.sub(r'г([аоуы])', r'G \1', phonemes)
         phonemes = re.sub(r'г([иеэөү])', r'G \1', phonemes)
 
         # syllable final palatal/velar plosives preceded by front/back vowels
-        phonemes = re.sub(r'([аоуы])к([^аоуыиеэөү])', r'\1Q \2', phonemes)
+        phonemes = re.sub(r'([аоуы])к([^аоуыиеэөү])', r'\1K \2', phonemes)
         phonemes = re.sub(r'([иеэөү])к([^аоуыиеэөү])', r'\1K \2', phonemes)
-        phonemes = re.sub(r'([аоуы])г([^аоуыиеэөү])', r'\1GH \2', phonemes)
+        phonemes = re.sub(r'([аоуы])г([^аоуыиеэөү])', r'\1G \2', phonemes)
         phonemes = re.sub(r'([иеэөү])г([^аоуыиеэөү])', r'\1G \2', phonemes)
 
         # word final palatal/velar plosives preceded by front/back vowels
-        phonemes = re.sub(r'([аоуы])к($)', r'\1Q', phonemes)
+        phonemes = re.sub(r'([аоуы])к($)', r'\1K', phonemes)
         phonemes = re.sub(r'([иеэөү])к($)', r'\1K', phonemes)
-        phonemes = re.sub(r'([аоуы])г($)', r'\1GH', phonemes)
+        phonemes = re.sub(r'([аоуы])г($)', r'\1G', phonemes)
         phonemes = re.sub(r'([иеэөү])г($)', r'\1G', phonemes)
 
         # /b/ between back vowels goes to [w] 
@@ -51,8 +51,8 @@ lookupTable = {'а':'AA ',
                'и':'IY ',
                'е':'EH ',
                'э':'EH ',
-               'ө':'OE ',
-               'ү':'YY ',
+               'ө':'AH ',
+               'ү':'UW ',
                
                'ю':'Y UH ',
                'я':'Y AA ',
@@ -63,6 +63,9 @@ lookupTable = {'а':'AA ',
                
                'д':'D ',
                'т':'T ',
+
+               'к':'K ',
+               'г':'G ',
                
                'ш':'SH ',
                'щ':'SH ',
@@ -76,11 +79,14 @@ lookupTable = {'а':'AA ',
                
                'з':'Z ',
                'с':'S ',
-               'ц':'TS ',
+               'ц':'T S ',
                'ч':'CH ',
                'ф':'F ',
+               'в':'V ',
                'х':'HH ',
-               'р':'R '}
+               'р':'R ',
+               'ъ':' ',
+               'ь':' '}
         
         
 if __name__ == "__main__":
