@@ -8,16 +8,13 @@ import re
 
 class Crawler(object):
 
-    def __init__(self,seed,kyrgyzWords,russianWords,kazakhLetters,latinLetters,
-                 tajikLetters):
+    def __init__(self,seed,pluses,minuses):
         self.queuedLinks = [seed]
         self.attemptedLinks = []
-        self.strip_links_from_page(kyrgyzWords,russianWords,kazakhLetters,
-                                   latinLetters,tajikLetters)
+        self.strip_links_from_page(pluses,minuses)
 
         
-    def strip_links_from_page(self,kyrgyzWords,russianWords,kazakhLetters,
-                              latinLetters,tajikLetters):
+    def strip_links_from_page(self,pluses,minuses):
         outfile = open('output.txt', 'w')
 
         while self.queuedLinks:
@@ -40,9 +37,7 @@ class Crawler(object):
                     # open and read URL
                     r = urllib.request.urlopen(self.currentLink).read()
                     soup = BeautifulSoup(r)
-                    score,text = self.score_page(soup,kyrgyzWords,russianWords,
-                                            kazakhLetters,latinLetters,
-                                                 tajikLetters)
+                    score,text = self.score_page(soup,pluses,minuses)
                     print(score)
                 except Exception as exception:
                     print(exception)
@@ -85,60 +80,59 @@ class Crawler(object):
                 pass
 
             
-    def score_page(self, soup, kyrgyzWords, russianWords, kazakhLetters,
-                       latinLetters,tajikLetters):
+    def score_page(self,soup,pluses,minuses):
 
         score=0
         text = (' ').join([p.getText() for p in soup.findAll('p')])
 
+        allPluses=[]
+        for plus in pluses:
+            allPluses+=plus
+
+        allMinuses=[]
+        for minus in minuses:
+            allMinuses+=minus
+            
         # Make regexes which match if any of our regexes match
-        kyrgyz = "(" + ")|(".join(kyrgyzWords) + ")"
-        score += (len(re.findall(kyrgyz,text)))
+        plus = "(" + ")|(".join(allPluses) + ")"
+        score += (len(re.findall(plus,text)))
 
-        latin = "(" + ")|(".join(latinLetters) + ")"
-        score -= (len(re.findall(latin,text)))/10
-
-        kazakh = "(" + ")|(".join(kazakhLetters) + ")"
-        score -= (len(re.findall(kazakh,text)))
-
-        tajik = "(" + ")|(".join(tajikLetters) + ")"
-        score -= (len(re.findall(tajik,text)))
-
-        russian = "(" + ")|(".join(russianWords) + ")"
-        score -= (len(re.findall(russian,text)))
+        minus = "(" + ")|(".join(allMinuses) + ")"
+        score -= (len(re.findall(minus,text)))
         
         return score,text
 
 
-kyrgyzWords = {' бирок ',' ооба ',' жок ',' жана ',' менен ',
-               ' сен ',' мен ',' бир ',' ал ',' алар ',
+kyrgyzWords = [' бирок ',' ооба ',' жок ',' жана ',' менен ',
+               ' сен ',' мен ', ' сиз ',' ал ',' алар ',
                ' анын ',' бул ',' болуп ',' эле ',' боюнча ',
                ' үчүн ',' деп ',' башка ',' ар ',' пайда ',
                ' болот ',' мамлекеттик ',' болгон ',
-               ' деген ',' көп '}
+               ' деген ',' көп ',' бир ']
 
-russianWords = {' и ',' в ',' не ',' что ',' на ', 
+russianWords = [' и ',' в ',' не ',' что ',' на ', 
                 ' быть ',' я ',' с ',' он ',' а ', 
                 ' это ',' так ',' то ',' этот ', 
                 ' они ',' мы ',' по ',' к ',' но ', 
                 ' она ',' у ',' который ',' весь ', 
-                ' из ',' вы ',' так '}
+                ' из ',' вы ',' так ']
 
-kazakhLetters = {'һ','ғ','қ','ә','ұ','і','ъ'}
+kazakhLetters = ['һ','ғ','қ','ә','ұ','і','ъ']
 
-latinLetters = {'a','b','c','d','e',
+latinLetters = ['a','b','c','d','e',
                 'f','g','h','i','j',
                 'k','l','m','n','o',
                 'p','q','r','s','t',
                 'u','v','w','x','y',
-                'z'}
+                'z']
 
-tajikLetters={'ӣ','ӯ','ҳ','ҷ'}
+tajikLetters = ['ӣ','ӯ','ҳ','ҷ']
 
 
 
 
 if __name__ == "__main__":
-    seed =  'http://' + sys.argv[1]
-    C = Crawler(seed,kyrgyzWords,russianWords,kazakhLetters,latinLetters,
-                tajikLetters)
+    seed =  sys.argv[1]
+    pluses = [kyrgyzWords]
+    minuses = [russianWords,kazakhLetters,tajikLetters]
+    C = Crawler(seed,pluses,minuses)
