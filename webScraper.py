@@ -30,7 +30,8 @@ class Crawler(object):
             # remove the link so we don't crawl it again
             del(self.queuedLinks[0])
 
-            if 'download' in self.currentLink:
+            if re.match('(download|wmv|avi|flv|mov|mkv|mp..?|swf|ra.?|rm|as.|m4[av]|smi.?)',
+                        self.currentLink):
                 score=0
             else:
                 try:
