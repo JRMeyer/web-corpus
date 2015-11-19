@@ -30,13 +30,13 @@ class Crawler(object):
             # remove the link so we don't crawl it again
             del(self.queuedLinks[0])
 
-            if re.match('(download|wmv|avi|flv|mov|mkv|mp..?|swf|ra.?|rm|as.|m4[av]|smi.?)',
+            if re.match('(download[=.]|wmv|avi|flv|mov|mkv|mp..?|swf|ra.?|rm|as.|m4[av]|smi.?)$',
                         self.currentLink):
                 score=0
             else:
                 try:
                     # open and read URL
-                    r = urllib.request.urlopen(self.currentLink).read()
+                    r=urllib.request.urlopen(self.currentLink,timeout=5).read()
                     soup = BeautifulSoup(r)
                     score,text = self.score_page(soup,pluses,minuses)
                     print(score)
