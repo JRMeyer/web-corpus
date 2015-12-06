@@ -11,67 +11,67 @@ class Crawler(object):
     def __init__(self,seed,pluses,minuses):
         self.queuedLinks = [seed]
         self.attemptedLinks = []
-        self.strip_links_from_page(pluses,minuses)
+        plusRegex, minusRegex = self.make_regexes_for_scoring(pluses,minuses)
+        self.strip_links_from_page(plusRegex,minusRegex)
 
         
-    def strip_links_from_page(self,pluses,minuses):
+    def strip_links_from_page(self,plusRegex,minusRegex):
         outfile = open('output.txt', 'w')
-
+        mediaRegex = ('(download(=.+)?|wmv|avi|flv|mov|mkv|mp..?|swf|ra.?|'+
+                      'rm|as.|m4[av]|smi.?|jpg|png|pdf|tif|gif|svg|bmp)$')
+        mediaRegex = re.compile(mediaRegex)
+        
         while self.queuedLinks:
             # take link off top of stack
-            self.currentLink = self.queuedLinks[0]
+            currentLink = self.queuedLinks[0]
 
             print('======================')
-            print(self.currentLink)
+            print(currentLink)
 
             # add link to list of attempted links
-            self.attemptedLinks.append(self.currentLink)
+            self.attemptedLinks.append(currentLink)
 
             # remove the link so we don't crawl it again
             del(self.queuedLinks[0])
 
-            if re.match('(download[=.]|wmv|avi|flv|mov|mkv|mp..?|swf|ra.?|rm|as.|m4[av]|smi.?)$',
-                        self.currentLink):
+            if re.search(mediaRegex,currentLink):
+                print('MEDIA')
                 score=0
             else:
                 try:
                     # open and read URL
-                    r=urllib.request.urlopen(self.currentLink,timeout=5).read()
+                    r = urllib.request.urlopen(currentLink,timeout=5).read()
                     soup = BeautifulSoup(r)
-                    score,text = self.score_page(soup,pluses,minuses)
+                    score,text = self.score_page(soup,plusRegex,minusRegex)
                     print(score)
                 except Exception as exception:
                     print(exception)
 
-
             # if the page looks more Kyrgyz than another language
             if score > 0:
-
+                # output the scraped text to file
                 outfile.write(text + '\n')
-
                 try:
                     # iterate through all links on page
-                    for tryLink in soup.find_all('a'):
-                        tryLink = tryLink['href']
-
-                        # the link is a full URL
-                        if tryLink.startswith('http'):
+                    for foundLink in soup.find_all('a'):
+                        foundLink = foundLink['href']
+                        # if the link is a full URL, just pass it along
+                        if foundLink.startswith('http'):
                             pass
-
-                        # internal links, so paste on beginning
-                        elif tryLink.startswith('/'):
-                            tryLink = urllib.parse.urljoin(self.currentLink,
-                                                           tryLink)
-
+                        # else if the link is internal, paste on beginning part
+                        elif foundLink.startswith('/'):
+                            foundLink = urllib.parse.urljoin(currentLink,
+                                                             foundLink)
+                        # if it's not a full or internal link, ignore it
                         else:
-                            tryLink=None
-
-                        # check if we've seen the link already
-                        if (tryLink in self.attemptedLinks or
-                            tryLink in self.queuedLinks or tryLink == None):
+                            foundLink = None
+                        # check if we've seen link already or if link == None
+                        if (foundLink in self.attemptedLinks or
+                            foundLink in self.queuedLinks or foundLink == None):
                             pass
+                        # if it's a new, legitimate link, queue it for later
                         else:
-                            self.queuedLinks.append(tryLink)
+                            self.queuedLinks.append(foundLink)
                 except:
                     pass
 
@@ -80,26 +80,29 @@ class Crawler(object):
             else:
                 pass
 
-            
-    def score_page(self,soup,pluses,minuses):
 
-        score=0
-        text = (' ').join([p.getText() for p in soup.findAll('p')])
-
+    def make_regexes_for_scoring(self,pluses,minuses):
+        # concatenate all lists for scoring text
         allPluses=[]
         for plus in pluses:
             allPluses+=plus
-
         allMinuses=[]
         for minus in minuses:
             allMinuses+=minus
-            
         # Make regexes which match if any of our regexes match
-        plus = "(" + ")|(".join(allPluses) + ")"
-        score += (len(re.findall(plus,text)))
+        plusRegex = re.compile("(" + ")|(".join(allPluses) + ")")
+        minusRegex = re.compile("(" + ")|(".join(allMinuses) + ")")
+        
+        return plusRegex, minusRegex
 
-        minus = "(" + ")|(".join(allMinuses) + ")"
-        score -= (len(re.findall(minus,text)))
+
+    def score_page(self,soup,plusRegex,minusRegex):
+        # get all 'p' paragraphs from page and paste them into one long string
+        text = (' ').join([p.getText() for p in soup.findAll('p')])
+        # score page
+        score = 0
+        score += (len(re.findall(plusRegex,text)))
+        score -= (len(re.findall(minusRegex,text)))
         
         return score,text
 
