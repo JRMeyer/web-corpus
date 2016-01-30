@@ -1,19 +1,19 @@
 from bs4 import BeautifulSoup
-import urllib
+import urllib.request
 import sys
 import time
 import re
 
 
-
 class Crawler(object):
 
-    def __init__(self,seed,pluses,minuses):
+    def __init__(self,seed,pluses,minuses,wander=True):
+        self.seed = seed
+        self.wander = wander
         self.queuedLinks = [seed]
         self.attemptedLinks = []
         plusRegex, minusRegex = self.make_regexes_for_scoring(pluses,minuses)
         self.strip_links_from_page(plusRegex,minusRegex)
-
         
     def strip_links_from_page(self,plusRegex,minusRegex):
         outfile = open('output.txt', 'w')
@@ -43,7 +43,7 @@ class Crawler(object):
                     r = urllib.request.urlopen(currentLink,timeout=5).read()
                     soup = BeautifulSoup(r)
                     score,text = self.score_page(soup,plusRegex,minusRegex)
-                    print(score)
+                    print('Score =', str(score))
                 except Exception as exception:
                     print(exception)
 
@@ -55,6 +55,7 @@ class Crawler(object):
                     # iterate through all links on page
                     for foundLink in soup.find_all('a'):
                         foundLink = foundLink['href']
+                        print(foundLink)
                         # if the link is a full URL, just pass it along
                         if foundLink.startswith('http'):
                             pass
@@ -65,6 +66,14 @@ class Crawler(object):
                         # if it's not a full or internal link, ignore it
                         else:
                             foundLink = None
+
+                        # if we don't want to visit pages besides the seed
+                        # and if the found link does not begin with seed...
+                        if self.wander == False:
+                            if not foundLink.startswith(self.seed):
+                                # ignore!
+                                foundLink = None
+
                         # check if we've seen link already or if link == None
                         if (foundLink in self.attemptedLinks or
                             foundLink in self.queuedLinks or foundLink == None):
@@ -80,7 +89,6 @@ class Crawler(object):
             else:
                 pass
 
-
     def make_regexes_for_scoring(self,pluses,minuses):
         # concatenate all lists for scoring text
         allPluses=[]
@@ -94,7 +102,6 @@ class Crawler(object):
         minusRegex = re.compile("(" + ")|(".join(allMinuses) + ")")
         
         return plusRegex, minusRegex
-
 
     def score_page(self,soup,plusRegex,minusRegex):
         # get all 'p' paragraphs from page and paste them into one long string
@@ -139,4 +146,4 @@ if __name__ == "__main__":
     seed =  sys.argv[1]
     pluses = [kyrgyzWords]
     minuses = [russianWords,kazakhLetters,tajikLetters]
-    C = Crawler(seed,pluses,minuses)
+    C = Crawler(seed,pluses,minuses, wander=False)
