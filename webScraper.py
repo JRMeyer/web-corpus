@@ -3,15 +3,18 @@ import urllib.request
 import sys
 import time
 import re
-
+import random
+import argparse
 
 class Crawler(object):
 
-    def __init__(self,seed,pluses,minuses,wander=True):
+    def __init__(self,seed,pluses,minuses,wander,verbose):
         self.seed = seed
         self.wander = wander
-        self.queuedLinks = [seed]
-        self.attemptedLinks = []
+        self.verbose = verbose
+        self.queuedLinks = set()
+        self.queuedLinks.add(seed)
+        self.attemptedLinks = set()
         plusRegex, minusRegex = self.make_regexes_for_scoring(pluses,minuses)
         self.strip_links_from_page(plusRegex,minusRegex)
         
@@ -23,16 +26,16 @@ class Crawler(object):
         
         while self.queuedLinks:
             # take link off top of stack
-            currentLink = self.queuedLinks[0]
+            currentLink = random.sample(self.queuedLinks,1)[0]
 
             print('======================')
-            print(currentLink)
+            print('Current link : ',currentLink)
 
             # add link to list of attempted links
-            self.attemptedLinks.append(currentLink)
+            self.attemptedLinks.add(currentLink)
 
             # remove the link so we don't crawl it again
-            del(self.queuedLinks[0])
+            self.queuedLinks.remove(currentLink)
 
             if re.search(mediaRegex,currentLink):
                 print('MEDIA')
@@ -55,7 +58,7 @@ class Crawler(object):
                     # iterate through all links on page
                     for foundLink in soup.find_all('a'):
                         foundLink = foundLink['href']
-                        print(foundLink)
+
                         # if the link is a full URL, just pass it along
                         if foundLink.startswith('http'):
                             pass
@@ -69,10 +72,14 @@ class Crawler(object):
 
                         # if we don't want to visit pages besides the seed
                         # and if the found link does not begin with seed...
-                        if self.wander == False:
+                        if self.wander == False and foundLink != None:
                             if not foundLink.startswith(self.seed):
-                                # ignore!
+                                # foundLink comes from the outside
+                                if self.verbose:
+                                    print('Outsider rejected! : ', foundLink)
                                 foundLink = None
+                            else:
+                                pass
 
                         # check if we've seen link already or if link == None
                         if (foundLink in self.attemptedLinks or
@@ -80,7 +87,9 @@ class Crawler(object):
                             pass
                         # if it's a new, legitimate link, queue it for later
                         else:
-                            self.queuedLinks.append(foundLink)
+                            self.queuedLinks.add(foundLink)
+                            if self.verbose:
+                                print('Link kept! : ', foundLink)
                 except:
                     pass
 
@@ -141,9 +150,24 @@ tajikLetters = ['ӣ','ӯ','ҳ','ҷ']
 
 
 
+def parse_user_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s','--seed', type=str,help='seed URL for crawller', 
+                        required=True)
+    parser.add_argument('-w','--wander', action='store_true', default=False, 
+                        help='allow crawling on sites other than seed')
+    parser.add_argument('-v', '--verbose', action='store_true', default=False, 
+                        help='increase output verbosity')
+    args = parser.parse_args()
+    return args
 
 if __name__ == "__main__":
-    seed =  sys.argv[1]
+    args = parse_user_args()
+
+    seed = args.seed
+    wander = args.wander
+    verbose = args.verbose
+
     pluses = [kyrgyzWords]
     minuses = [russianWords,kazakhLetters,tajikLetters]
-    C = Crawler(seed,pluses,minuses, wander=False)
+    C = Crawler(seed,pluses,minuses,wander,verbose)
