@@ -1,4 +1,4 @@
-### webScraper.py
+# webScraper.py
 
 This script runs on Python 3, so check if you have Python 3 installed with
 something like this:
