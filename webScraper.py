@@ -43,12 +43,18 @@ class Crawler(object):
             else:
                 try:
                     # open and read URL
-                    r = urllib.request.urlopen(currentLink,timeout=5).read()
+                    req = urllib.request.Request(currentLink,headers={'User-Agent': 'Mozilla/5.0'})
+                    r = urllib.request.urlopen(req, timeout=5).read()
                     soup = BeautifulSoup(r)
                     score,text = self.score_page(soup,plusRegex,minusRegex)
+
+                    #r = urllib.request.urlopen(currentLink,timeout=5).read()
+                    #soup = BeautifulSoup(r)
+                    #score,text = self.score_page(soup,plusRegex,minusRegex)
                     print('Score =', str(score))
                 except Exception as exception:
                     print(exception)
+                    exit()
 
             # if the page looks more Kyrgyz than another language
             if score > 0:
