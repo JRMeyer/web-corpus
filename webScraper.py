@@ -1,108 +1,106 @@
+# -*- coding: utf-8 -*-
 from bs4 import BeautifulSoup
-import urllib.request
+import urllib.request as request
+import urllib.parse as parse
+import http.client as client
 import sys
 import time
 import re
 import random
 import argparse
+import requests
+import urllib
+import os
 
 class Crawler(object):
-
-    def __init__(self,seed,pluses,minuses,wander,verbose):
+    def __init__(self,seed,pluses,minuses,wander,verbose,outfile):
+        self.outfile = outfile
         self.seed = seed
+        self.projectDir = str(parse.urlsplit(seed).netloc).replace(".","-")
+        if not os.path.isdir(self.projectDir):
+            os.mkdir(self.projectDir)
         self.wander = wander
         self.verbose = verbose
-        self.queuedLinks = set()
-        self.queuedLinks.add(seed)
+        self.queuedLinks = set([seed])
         self.attemptedLinks = set()
+        self.rejectedLinks = set()
         plusRegex, minusRegex = self.make_regexes_for_scoring(pluses,minuses)
         self.strip_links_from_page(plusRegex,minusRegex)
-        
+
     def strip_links_from_page(self,plusRegex,minusRegex):
-        outfile = open('output.txt', 'w')
-        mediaRegex = ('(download(=.+)?|wmv|avi|flv|mov|mkv|mp..?|swf|ra.?|'+
+        outfile = open(self.projectDir+"/"+self.outfile, 'w')
+        mediaRegex = ('(download(=.+)?|wmv|avi|flv|mov|mkv|mp3|mp4|swf|ra.?|'+
                       'rm|as.|m4[av]|smi.?|jpg|png|pdf|tif|gif|svg|bmp)$')
         mediaRegex = re.compile(mediaRegex)
-        
+
+        i=0
         while self.queuedLinks:
-            # take link off top of stack
-            currentLink = random.sample(self.queuedLinks,1)[0]
+            i+=1
+            currentLink = random.sample(self.queuedLinks,1)[0] # take link off top of stack
+            print('======================\n', 'Current link : ',currentLink)
+            self.attemptedLinks.add(currentLink) # add to list of attempted links
+            self.queuedLinks.remove(currentLink) # don't crawl it again
 
-            print('======================')
-            print('Current link : ',currentLink)
-
-            # add link to list of attempted links
-            self.attemptedLinks.add(currentLink)
-
-            # remove the link so we don't crawl it again
-            self.queuedLinks.remove(currentLink)
-
-            if re.search(mediaRegex,currentLink):
-                print('MEDIA')
-                score=0
-            else:
-                try:
-                    # open and read URL
-                    req = urllib.request.Request(currentLink,headers={'User-Agent': 'Mozilla/5.0'})
-                    r = urllib.request.urlopen(req, timeout=5).read()
-                    soup = BeautifulSoup(r)
-                    score,text = self.score_page(soup,plusRegex,minusRegex)
-
-                    #r = urllib.request.urlopen(currentLink,timeout=5).read()
-                    #soup = BeautifulSoup(r)
-                    #score,text = self.score_page(soup,plusRegex,minusRegex)
-                    print('Score =', str(score))
-                except Exception as exception:
-                    print(exception)
-                    exit()
-
-            # if the page looks more Kyrgyz than another language
-            if score > 0:
-                # output the scraped text to file
+            try:
+                # SCRAPE TEXT FROM CURRENT URL
+                req = urllib.request.Request(currentLink,headers={'User-Agent': 'Mozilla/5.0'})
+                r = urllib.request.urlopen(req, timeout=5).read()
+                soup = BeautifulSoup(r, features="html.parser")
+                score,text = self.score_page(soup,plusRegex,minusRegex)
                 outfile.write(text + '\n')
-                try:
-                    # iterate through all links on page
-                    for foundLink in soup.find_all('a'):
+
+                # SCRAPE LINKS FROM CURRENT URL
+                for foundLink in soup.find_all('a'):
+                    # first, check if empty link
+                    if not 'href' in str(foundLink):
+                        if self.verbose:
+                            print('R: Empty link : ', foundLink)
+                        foundLink = None
+                    else:
                         foundLink = foundLink['href']
 
-                        # if the link is a full URL, just pass it along
-                        if foundLink.startswith('http'):
-                            pass
-                        # else if the link is internal, paste on beginning part
-                        elif foundLink.startswith('/'):
-                            foundLink = urllib.parse.urljoin(currentLink,
-                                                             foundLink)
-                        # if it's not a full or internal link, ignore it
-                        else:
-                            foundLink = None
+                    if foundLink and re.search(mediaRegex,foundLink):
+                        self.rejectedLinks.add(foundLink)
+                        if self.verbose:
+                            print('R: Media : ', foundLink)
+                        foundLink = None
+                    elif foundLink and foundLink.startswith(self.seed):
+                        pass
+                    elif foundLink and foundLink.startswith('/'):
+                        foundLink = urllib.parse.urljoin(currentLink,foundLink)
+                    elif foundLink and foundLink.startswith('http'):
+                        # link starts with http but not the seed URL
+                        self.rejectedLinks.add(foundLink)
+                        if self.verbose:
+                            print('R: Outsider : ', foundLink)
+                        foundLink = None
+                    elif foundLink:
+                        # some links have missing slashes, so add one
+                        foundLink = urllib.parse.urljoin(currentLink,"/"+foundLink)
 
-                        # if we don't want to visit pages besides the seed
-                        # and if the found link does not begin with seed...
-                        if self.wander == False and foundLink != None:
-                            if not foundLink.startswith(self.seed):
-                                # foundLink comes from the outside
-                                if self.verbose:
-                                    print('Outsider rejected! : ', foundLink)
-                                foundLink = None
-                            else:
-                                pass
-
-                        # check if we've seen link already or if link == None
-                        if (foundLink in self.attemptedLinks or
-                            foundLink in self.queuedLinks or foundLink == None):
-                            pass
-                        # if it's a new, legitimate link, queue it for later
-                        else:
-                            self.queuedLinks.add(foundLink)
-                            if self.verbose:
-                                print('Link kept! : ', foundLink)
-                except:
-                    pass
-
-                print('attempted = ' + str(len(self.attemptedLinks)))
-                print('queued = ' + str(len(self.queuedLinks)))
-            else:
+                    if (not foundLink or foundLink in self.attemptedLinks or
+                        foundLink in self.queuedLinks or foundLink in self.rejectedLinks):
+                        # pass if we've seen link already or if link == None
+                        pass
+                    else:
+                        self.queuedLinks.add(foundLink)
+                        if self.verbose:
+                            print('A : ', foundLink)
+            except Exception as e:
+                print(e)
                 pass
+            print('attempted = ' + str(len(self.attemptedLinks)))
+            print('queued = ' + str(len(self.queuedLinks)))
+            print('rejected = ' + str(len(self.rejectedLinks)))
+
+            if i%10000 == 0:
+                # save progress to files every 10000 links
+                with open(self.projectDir+"/attempted."+str(i)+".txt", "w") as f:
+                    print(self.attemptedLinks, file=f)
+                with open(self.projectDir+"/queued."+str(i)+".txt", "w") as f:
+                    print(self.queuedLinks, file=f)
+                with open(self.projectDir+"/rejected."+str(i)+".txt", "w") as f:
+                    print(self.rejectedLinks, file=f)
 
     def make_regexes_for_scoring(self,pluses,minuses):
         # concatenate all lists for scoring text
@@ -115,7 +113,7 @@ class Crawler(object):
         # Make regexes which match if any of our regexes match
         plusRegex = re.compile("(" + ")|(".join(allPluses) + ")")
         minusRegex = re.compile("(" + ")|(".join(allMinuses) + ")")
-        
+
         return plusRegex, minusRegex
 
     def score_page(self,soup,plusRegex,minusRegex):
@@ -125,35 +123,8 @@ class Crawler(object):
         score = 0
         score += (len(re.findall(plusRegex,text)))
         score -= (len(re.findall(minusRegex,text)))
-        
+
         return score,text
-
-
-kyrgyzWords = [' бирок ',' ооба ',' жок ',' жана ',' менен ',
-               ' сен ',' мен ', ' сиз ',' ал ',' алар ',
-               ' анын ',' бул ',' болуп ',' эле ',' боюнча ',
-               ' үчүн ',' деп ',' башка ',' ар ',' пайда ',
-               ' болот ',' мамлекеттик ',' болгон ',
-               ' деген ',' көп ',' бир ']
-
-russianWords = [' и ',' в ',' не ',' что ',' на ', 
-                ' быть ',' я ',' с ',' он ',' а ', 
-                ' это ',' так ',' то ',' этот ', 
-                ' они ',' мы ',' по ',' к ',' но ', 
-                ' она ',' у ',' который ',' весь ', 
-                ' из ',' вы ',' так ']
-
-kazakhLetters = ['һ','ғ','қ','ә','ұ','і','ъ']
-
-latinLetters = ['a','b','c','d','e',
-                'f','g','h','i','j',
-                'k','l','m','n','o',
-                'p','q','r','s','t',
-                'u','v','w','x','y',
-                'z']
-
-tajikLetters = ['ӣ','ӯ','ҳ','ҷ']
-
 
 
 def parse_user_args():
@@ -164,8 +135,11 @@ def parse_user_args():
                         help='allow crawling on sites other than seed')
     parser.add_argument('-v', '--verbose', action='store_true', default=False, 
                         help='increase output verbosity')
+    parser.add_argument('-o','--outfile', type=str,help='where to save output', required=True)
+
     args = parser.parse_args()
     return args
+
 
 if __name__ == "__main__":
     args = parse_user_args()
@@ -173,7 +147,9 @@ if __name__ == "__main__":
     seed = args.seed
     wander = args.wander
     verbose = args.verbose
+    outfile = args.outfile
 
-    pluses = [kyrgyzWords]
-    minuses = [russianWords,kazakhLetters,tajikLetters]
-    C = Crawler(seed,pluses,minuses,wander,verbose)
+    pluses = [['foo']]
+    minuses = [['bar']]
+
+    C = Crawler(seed,pluses,minuses,wander,verbose,outfile)
