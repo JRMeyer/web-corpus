@@ -50,6 +50,7 @@ class Crawler(object):
                 if self.verbose:
                     print('Info: Score of {} for {}'.format(score,currentLink))
                 assert (score >0), "currentLink has a score not greater than Zero (0)"
+                print(text,file=outfile)
                 # SCRAPE LINKS FROM CURRENT URL
                 for foundLink in soup.find_all('a'):
                     # first, check if empty link
