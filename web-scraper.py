@@ -47,8 +47,9 @@ class Crawler(object):
                 r = urllib.request.urlopen(req, timeout=5).read()
                 soup = BeautifulSoup(r, features="html.parser")
                 score,text = self.score_page(soup,plusRegex,minusRegex)
-                outfile.write(text + '\n')
-
+                if self.verbose:
+                    print('Info: Score of {} for {}'.format(score,currentLink))
+                assert (score >0), "currentLink has a score not greater than Zero (0)"
                 # SCRAPE LINKS FROM CURRENT URL
                 for foundLink in soup.find_all('a'):
                     # first, check if empty link
@@ -119,11 +120,21 @@ class Crawler(object):
     def score_page(self,soup,plusRegex,minusRegex):
         # get all 'p' paragraphs from page and paste them into one long string
         text = (' ').join([p.getText() for p in soup.findAll('p')])
-        # score page
-        score = 0
-        score += (len(re.findall(plusRegex,text)))
-        score -= (len(re.findall(minusRegex,text)))
 
+        # score page
+        totalPluses = (len(re.findall(plusRegex,text)))
+        totalMinuses = (len(re.findall(minusRegex,text)))
+        if args.verbose:
+            print("Info: totalPluses == {}".format(totalPluses))
+            print("Info: totalMinuses == {}".format(totalMinuses))
+
+        if args.strict_voting:
+            if (totalPluses == 0) or (totalMinuses > 0):
+                score = 0
+            else:
+                score = totalPluses - totalMinuses
+        else:
+            score = totalPluses - totalMinuses
         return score,text
 
 
@@ -136,6 +147,10 @@ def parse_user_args():
     parser.add_argument('-v', '--verbose', action='store_true', default=False, 
                         help='increase output verbosity')
     parser.add_argument('-o','--outfile', type=str,help='where to save output', required=True)
+    parser.add_argument('-p','--pluses', type=str,help='comma-separated list of words for upvoting a page', required=True)
+    parser.add_argument('-m','--minuses', type=str,help='comma-separated list of words for downvoting a page', required=True)
+    parser.add_argument('--strict_voting', action='store_true', default=False, 
+                        help='implement strict voting, so that a page must a have "pluses" and cannot have "minuses"')
 
     args = parser.parse_args()
     return args
@@ -148,8 +163,14 @@ if __name__ == "__main__":
     wander = args.wander
     verbose = args.verbose
     outfile = args.outfile
-
-    pluses = [['foo']]
-    minuses = [['bar']]
+    pluses=[]
+    for plus in args.pluses.split(","):
+        pluses.append([plus])
+    minuses=[]
+    for minus in args.minuses.split(","):
+        minuses.append([minus])
+    if args.verbose:
+        print("Upvoting pages with these words: {}".format(pluses))
+        print("Downvoting pages with these words: {}".format(minuses))
 
     C = Crawler(seed,pluses,minuses,wander,verbose,outfile)
