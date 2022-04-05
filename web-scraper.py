@@ -36,6 +36,9 @@ class Crawler(object):
         i=0
         while self.queuedLinks:
             i+=1
+            if args.crawl_limit and i>args.crawl_limit:
+                print("Reached self-imposed crawl limit of {} pages".format(args.crawl_limit))
+                break
             currentLink = random.sample(self.queuedLinks,1)[0] # take link off top of stack
             print('======================\n', 'Current link : ',currentLink)
             self.attemptedLinks.add(currentLink) # add to list of attempted links
@@ -104,6 +107,7 @@ class Crawler(object):
                 with open(self.projectDir+"/rejected."+str(i)+".txt", "w") as f:
                     print(self.rejectedLinks, file=f)
 
+
     def make_regexes_for_scoring(self,pluses,minuses):
         # concatenate all lists for scoring text
         allPluses=[]
@@ -152,6 +156,7 @@ def parse_user_args():
     parser.add_argument('-m','--minuses', type=str,help='comma-separated list of words for downvoting a page', required=True)
     parser.add_argument('--strict_voting', action='store_true', default=False, 
                         help='implement strict voting, so that a page must a have "pluses" and cannot have "minuses"')
+    parser.add_argument('--crawl_limit', type=int,help='Limit number of pages to crawl from see to a maximum number',default=0)
 
     args = parser.parse_args()
     return args
