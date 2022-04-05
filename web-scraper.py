@@ -21,7 +21,7 @@ class Crawler(object):
             os.mkdir(self.projectDir)
         self.wander = wander
         self.verbose = verbose
-        self.queuedLinks = set([seed])
+        self.queuedLinks = list([seed])
         self.attemptedLinks = set()
         self.rejectedLinks = set()
         plusRegex, minusRegex = self.make_regexes_for_scoring(pluses,minuses)
@@ -34,15 +34,14 @@ class Crawler(object):
         mediaRegex = re.compile(mediaRegex)
 
         i=0
-        while self.queuedLinks:
+        while len(self.queuedLinks):
             i+=1
             if args.crawl_limit and i>args.crawl_limit:
                 print("Reached self-imposed crawl limit of {} pages".format(args.crawl_limit))
                 break
-            currentLink = random.sample(self.queuedLinks,1)[0] # take link off top of stack
+            currentLink = self.queuedLinks.pop(0) # take top link off the stack
             print('======================\n', 'Current link : ',currentLink)
             self.attemptedLinks.add(currentLink) # add to list of attempted links
-            self.queuedLinks.remove(currentLink) # don't crawl it again
 
             try:
                 # SCRAPE TEXT FROM CURRENT URL
@@ -52,7 +51,7 @@ class Crawler(object):
                 score,text = self.score_page(soup,plusRegex,minusRegex)
                 if self.verbose:
                     print('Info: Score of {} for {}'.format(score,currentLink))
-                assert (score >0), "currentLink has a score not greater than Zero (0)"
+                assert (score > 0), "currentLink has a score not greater than Zero (0)"
                 print(text,file=outfile)
                 # SCRAPE LINKS FROM CURRENT URL
                 for foundLink in soup.find_all('a'):
@@ -83,12 +82,14 @@ class Crawler(object):
                         # some links have missing slashes, so add one
                         foundLink = urllib.parse.urljoin(currentLink,"/"+foundLink)
 
-                    if (not foundLink or foundLink in self.attemptedLinks or
-                        foundLink in self.queuedLinks or foundLink in self.rejectedLinks):
+                    if (not foundLink or
+                        foundLink in self.attemptedLinks or
+                        foundLink in self.rejectedLinks or
+                        foundLink in self.queuedLinks):
                         # pass if we've seen link already or if link == None
                         pass
                     else:
-                        self.queuedLinks.add(foundLink)
+                        self.queuedLinks.append(foundLink)
                         if self.verbose:
                             print('A : ', foundLink)
             except Exception as e:
